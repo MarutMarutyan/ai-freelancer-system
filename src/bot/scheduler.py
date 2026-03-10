@@ -59,7 +59,18 @@ async def auto_scan_and_analyze(bot: Bot):
                 callback_data=f"pitch_{r['order_id']}",
             )])
 
-        text += f"API: ~${analyzer.claude.estimated_cost_usd}"
+        api_cost = analyzer.claude.estimated_cost_usd
+        text += f"API: ~${api_cost}"
+
+        # Записываем расходы и статистику
+        from src.utils.finance import record_api_cost, update_daily_stats
+        if api_cost > 0:
+            record_api_cost(api_cost, f"Автосканирование: {len(results)} заказов")
+        update_daily_stats(
+            orders_scanned=len(new_orders),
+            orders_analyzed=len(results),
+            api_cost=api_cost,
+        )
 
         kb = InlineKeyboardMarkup(inline_keyboard=buttons)
 

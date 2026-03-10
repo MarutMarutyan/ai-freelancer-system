@@ -81,6 +81,12 @@ async def execute_with_qa(order_id: int) -> dict | None:
                 mark = "+" if passed else "-"
                 checklist_display.append(f"[{mark}] {item.get('item', '')}")
 
+        # Записываем расходы API
+        api_cost = executor.claude.estimated_cost_usd
+        if api_cost > 0:
+            from src.utils.finance import record_api_cost
+            record_api_cost(api_cost, f"Выполнение заказа #{order_id}", order_id, session)
+
         return {
             "order_id": order.id,
             "order_title": order.title,
@@ -91,7 +97,7 @@ async def execute_with_qa(order_id: int) -> dict | None:
             "qa_checklist": checklist_display,
             "qa_comment": qa_result.overall_comment if qa_result else "",
             "qa_issues": qa_result.issues if qa_result else [],
-            "api_cost": executor.claude.estimated_cost_usd,
+            "api_cost": api_cost,
         }
 
     finally:

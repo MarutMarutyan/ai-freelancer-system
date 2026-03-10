@@ -121,6 +121,12 @@ class ResponseWriterAgent(BaseAgent):
             session.add(order)
             session.commit()
 
+            # Записываем расход API
+            api_cost = self.claude.estimated_cost_usd
+            if api_cost > 0:
+                from src.utils.finance import record_api_cost
+                record_api_cost(api_cost, f"Отклик на заказ #{order_id}", order_id, session)
+
             return {
                 "order_id": order.id,
                 "order_title": order.title,

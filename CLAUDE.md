@@ -17,7 +17,7 @@ AI-система для заработка на фриланс-площадка
 - `src/claude_api/` — обёртка над Claude API, промпты, схемы
 - `src/database/` — SQLite модели и запросы
 - `src/bot/` — Telegram-бот
-- `src/utils/` — логгер, rate limiter
+- `src/utils/` — логгер, rate limiter, финансы
 - `templates/` — шаблоны откликов и описаний кворков
 
 ## Правила
@@ -39,4 +39,19 @@ python -m src.main --help
 - `freelancer analyze` — анализировать заказы
 - `freelancer pitch <id>` — подготовить отклик
 - `freelancer execute <id>` — выполнить заказ
+- `freelancer finance` — финансовая сводка
+- `freelancer strategy` — рекомендации AI-стратега
+- `freelancer income <id> <сумма>` — записать доход от заказа
 - `freelancer bot` — запустить Telegram-бота
+
+## Telegram-бот команды
+- `/start` — главное меню с кнопками
+- `/scan` — сканировать заказы
+- `/analyze` — анализировать новые
+- `/orders` — лучшие заказы
+- `/pitch <id>` — сгенерировать отклик
+- `/execute <id>` — выполнить заказ
+- `/finance` — финансовая сводка
+- `/income <id> <сумма>` — записать доход
+- `/strategy` — рекомендации AI
+- `/status` — статус системы

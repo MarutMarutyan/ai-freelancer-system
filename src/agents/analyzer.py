@@ -113,10 +113,17 @@ class AnalyzerAgent(BaseAgent):
                     "work_type": analysis.work_type,
                 })
 
+            api_cost = self.claude.estimated_cost_usd
             logger.info(
                 f"Анализ завершён. Обработано: {len(results)}/{len(orders)}. "
-                f"API стоимость: ~${self.claude.estimated_cost_usd}"
+                f"API стоимость: ~${api_cost}"
             )
+
+            # Записываем расход API
+            if api_cost > 0:
+                from src.utils.finance import record_api_cost
+                record_api_cost(api_cost, f"Анализ {len(results)} заказов", session=session)
+
             return results
 
         finally:
