@@ -41,7 +41,7 @@ class QAAgent(BaseAgent):
                 prompt=prompt,
                 response_model=QAResult,
                 system=QA_SYSTEM,
-                model=settings.analyzer_model,  # Haiku — дешевле
+                model=settings.writer_model,  # Sonnet — качественнее для QA
             )
 
             qa = QAResult(**result)
