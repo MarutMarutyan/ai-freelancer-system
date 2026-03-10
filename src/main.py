@@ -76,9 +76,68 @@ def scan():
 
 
 @app.command()
-def analyze():
-    """Проанализировать новые заказы."""
-    console.print("[yellow]Анализатор будет доступен в Этапе 3[/yellow]")
+def analyze(
+    limit: int = typer.Option(0, "--limit", "-l", help="Макс. заказов для анализа (0 = все)"),
+):
+    """Проанализировать новые заказы через Claude AI."""
+    from src.agents.analyzer import analyzer_agent
+    from src.config import settings as cfg
+
+    if not cfg.anthropic_api_key:
+        console.print("[red]ANTHROPIC_API_KEY не настроен! Добавь ключ в .env файл[/red]")
+        return
+
+    console.print("[cyan]Анализирую новые заказы через Claude API...[/cyan]")
+    results = asyncio.run(analyzer_agent.run(limit=limit))
+
+    if not results:
+        console.print("[yellow]Нет заказов для анализа (запусти scan сначала)[/yellow]")
+        return
+
+    table = Table(title=f"Результаты анализа: {len(results)} заказов")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Заказ", style="cyan", max_width=40)
+    table.add_column("Оценка", width=8)
+    table.add_column("Рекомендация", width=14)
+    table.add_column("Тип", style="yellow", width=12)
+    table.add_column("Цена", style="green", width=10)
+    table.add_column("Время", width=10)
+
+    for i, r in enumerate(results, 1):
+        score = r["score"]
+        if score >= 70:
+            score_style = f"[green]{score}[/green]"
+        elif score >= 50:
+            score_style = f"[yellow]{score}[/yellow]"
+        else:
+            score_style = f"[red]{score}[/red]"
+
+        rec = r["recommendation"]
+        rec_style = f"[green]{rec}[/green]" if rec == "respond" else f"[dim]{rec}[/dim]"
+
+        table.add_row(
+            str(i),
+            r["title"][:40],
+            score_style,
+            rec_style,
+            r["work_type"],
+            f"{r['suggested_price']} r",
+            r["estimated_time"],
+        )
+
+    console.print(table)
+
+    # Показать лучшие заказы
+    good = [r for r in results if r["score"] >= cfg.min_score_threshold]
+    if good:
+        console.print(f"\n[green]Подходящих заказов (>={cfg.min_score_threshold}): {len(good)}[/green]")
+        for r in good:
+            console.print(f"  [cyan]#{r['order_id']}[/cyan] {r['title'][:50]}")
+            console.print(f"    {r['reasoning']}")
+    else:
+        console.print(f"\n[yellow]Подходящих заказов (>={cfg.min_score_threshold}) не найдено[/yellow]")
+
+    console.print(f"\n[dim]API стоимость: ~${analyzer_agent.claude.estimated_cost_usd}[/dim]")
 
 
 @app.command()
