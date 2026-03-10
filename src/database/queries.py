@@ -112,3 +112,67 @@ def get_today_stats(session: Optional[Session] = None) -> Optional[DailyStats]:
     if not session:
         s.close()
     return result
+
+
+def get_profile_stats(session: Optional[Session] = None) -> dict:
+    """Собрать статистику профиля для стратега."""
+    from collections import Counter
+
+    from sqlmodel import func
+
+    s = session or get_session()
+    try:
+        total = s.exec(select(func.count(Order.id))).one()
+        analyzed = s.exec(
+            select(func.count(Order.id)).where(Order.status != "new")
+        ).one()
+        responded = s.exec(
+            select(func.count(Order.id)).where(Order.status == "responded")
+        ).one()
+        won = s.exec(
+            select(func.count(Order.id)).where(Order.status == "won")
+        ).one()
+
+        # Выполненные заказы
+        executed = s.exec(select(func.count(Execution.id))).one()
+        qa_first = s.exec(
+            select(func.count(Execution.id)).where(
+                Execution.qa_passed == True,
+                Execution.qa_iterations == 1,
+            )
+        ).one()
+
+        # Средняя оценка
+        avg_score_result = s.exec(
+            select(func.avg(Order.score)).where(Order.score.isnot(None))
+        ).one()
+        avg_score = round(float(avg_score_result), 1) if avg_score_result else 0
+
+        # Конверсия
+        conversion = round(won / responded * 100, 1) if responded > 0 else 0
+
+        # Категории
+        orders_with_cat = s.exec(
+            select(Order.category).where(Order.category != "")
+        ).all()
+        cat_counts = Counter(orders_with_cat)
+        categories_summary = "\n".join(
+            f"  - {cat}: {count} заказов" for cat, count in cat_counts.most_common(5)
+        )
+        if not categories_summary:
+            categories_summary = "  Нет данных"
+
+        return {
+            "total_orders": total,
+            "analyzed": analyzed,
+            "responded": responded,
+            "won": won,
+            "executed": executed,
+            "qa_first_pass": qa_first,
+            "avg_score": avg_score,
+            "conversion_rate": conversion,
+            "categories_summary": categories_summary,
+        }
+    finally:
+        if not session:
+            s.close()

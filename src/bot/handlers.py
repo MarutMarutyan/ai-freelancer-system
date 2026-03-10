@@ -37,6 +37,10 @@ def main_menu_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="Лучшие заказы", callback_data="orders"),
             InlineKeyboardButton(text="Статус", callback_data="status"),
         ],
+        [
+            InlineKeyboardButton(text="Финансы", callback_data="finance"),
+            InlineKeyboardButton(text="Стратег", callback_data="strategy"),
+        ],
     ])
 
 
@@ -51,6 +55,10 @@ async def cmd_start(message: Message):
         "/analyze - Анализировать новые\n"
         "/orders - Лучшие заказы\n"
         "/pitch <id> - Сгенерировать отклик\n"
+        "/execute <id> - Выполнить заказ\n"
+        "/finance - Финансы\n"
+        "/income <id> <сумма> - Записать доход\n"
+        "/strategy - Рекомендации AI\n"
         "/status - Статус системы\n\n"
         "Или используй кнопки:",
         reply_markup=main_menu_kb(),
@@ -297,6 +305,112 @@ async def cmd_execute(message: Message):
         await message.answer(f"Ошибка: {e}")
 
 
+@router.message(Command("finance"))
+@admin_only
+async def cmd_finance(message: Message):
+    """Финансовая сводка."""
+    from src.utils.finance import get_finance_summary
+
+    try:
+        summary = get_finance_summary(days=30)
+
+        text = (
+            "Финансы (за 30 дней):\n\n"
+            f"Доход: {summary['total_income']} руб.\n"
+            f"Расходы API: ${summary['total_api_cost']}\n"
+            f"  (~{summary['total_api_cost_rub']} руб.)\n"
+            f"Комиссия Kwork: {summary['total_commission']} руб.\n"
+            f"Чистая прибыль: {summary['net_profit']} руб.\n\n"
+            f"--- За всё время ---\n"
+            f"API: ${summary['all_time_api_cost']}\n"
+            f"Доход: {summary['all_time_income']} руб.\n\n"
+            "Записать доход: /income <id заказа> <сумма>"
+        )
+        await message.answer(text, reply_markup=main_menu_kb())
+    except Exception as e:
+        logger.error(f"Ошибка финансов: {e}")
+        await message.answer(f"Ошибка: {e}")
+
+
+@router.message(Command("income"))
+@admin_only
+async def cmd_income(message: Message):
+    """Записать доход от заказа."""
+    parts = message.text.split()
+    if len(parts) < 3:
+        await message.answer(
+            "Использование: /income <id заказа> <сумма>\n"
+            "Пример: /income 8 2500"
+        )
+        return
+
+    try:
+        order_id = int(parts[1])
+        amount = float(parts[2])
+    except ValueError:
+        await message.answer("ID заказа и сумма должны быть числами.")
+        return
+
+    from src.utils.finance import record_income
+
+    try:
+        record_income(amount, order_id)
+        commission = amount * 0.20
+        net = amount - commission
+        await message.answer(
+            f"Записан доход: {amount} руб.\n"
+            f"Комиссия Kwork (20%): {commission} руб.\n"
+            f"Чистый доход: {net} руб."
+        )
+    except Exception as e:
+        await message.answer(f"Ошибка: {e}")
+
+
+@router.message(Command("strategy"))
+@admin_only
+async def cmd_strategy(message: Message):
+    """Стратегические рекомендации от AI."""
+    await message.answer("Анализирую статистику и готовлю рекомендации...")
+
+    from src.agents.strategy import strategy_agent
+
+    try:
+        result = await strategy_agent.run()
+
+        if not result:
+            await message.answer("Не удалось получить рекомендации.")
+            return
+
+        text = "Рекомендации стратега:\n\n"
+
+        text += "Профиль:\n"
+        for tip in result["profile_tips"]:
+            text += f"  - {tip}\n"
+
+        text += "\nЦенообразование:\n"
+        for tip in result["pricing_tips"]:
+            text += f"  - {tip}\n"
+
+        text += "\nКатегории для фокуса:\n"
+        for cat in result["category_focus"]:
+            text += f"  - {cat}\n"
+
+        text += "\nСледующие шаги:\n"
+        for i, step in enumerate(result["next_steps"], 1):
+            text += f"  {i}. {step}\n"
+
+        text += f"\nAPI: ~${result['api_cost']}"
+
+        if len(text) > 4000:
+            await message.answer(text[:4000] + "\n...(обрезано)")
+        else:
+            await message.answer(text)
+
+    except Exception as e:
+        logger.error(f"Ошибка стратега: {e}")
+        await message.answer(f"Ошибка: {e}")
+
+
 @router.message(Command("status"))
 @admin_only
 async def cmd_status(message: Message):
@@ -462,6 +576,75 @@ async def cb_status(callback: CallbackQuery):
         await callback.message.answer(text, reply_markup=main_menu_kb())
     finally:
         session.close()
+
+
+@router.callback_query(F.data == "finance")
+async def cb_finance(callback: CallbackQuery):
+    """Кнопка финансов."""
+    if not _is_admin(callback):
+        await callback.answer("Доступ запрещён", show_alert=True)
+        return
+    await callback.answer()
+
+    from src.utils.finance import get_finance_summary
+
+    try:
+        summary = get_finance_summary(days=30)
+        text = (
+            "Финансы (за 30 дней):\n\n"
+            f"Доход: {summary['total_income']} руб.\n"
+            f"Расходы API: ${summary['total_api_cost']}\n"
+            f"  (~{summary['total_api_cost_rub']} руб.)\n"
+            f"Комиссия Kwork: {summary['total_commission']} руб.\n"
+            f"Чистая прибыль: {summary['net_profit']} руб.\n\n"
+            f"--- За всё время ---\n"
+            f"API: ${summary['all_time_api_cost']}\n"
+            f"Доход: {summary['all_time_income']} руб.\n\n"
+            "Записать доход: /income <id заказа> <сумма>"
+        )
+        await callback.message.answer(text, reply_markup=main_menu_kb())
+    except Exception as e:
+        await callback.message.answer(f"Ошибка: {e}")
+
+
+@router.callback_query(F.data == "strategy")
+async def cb_strategy(callback: CallbackQuery):
+    """Кнопка стратега."""
+    if not _is_admin(callback):
+        await callback.answer("Доступ запрещён", show_alert=True)
+        return
+    await callback.answer("Анализирую...")
+    await callback.message.answer("Готовлю рекомендации через Claude AI...")
+
+    from src.agents.strategy import strategy_agent
+
+    try:
+        result = await strategy_agent.run()
+        if not result:
+            await callback.message.answer("Не удалось получить рекомендации.")
+            return
+
+        text = "Рекомендации стратега:\n\n"
+        text += "Профиль:\n"
+        for tip in result["profile_tips"]:
+            text += f"  - {tip}\n"
+        text += "\nЦенообразование:\n"
+        for tip in result["pricing_tips"]:
+            text += f"  - {tip}\n"
+        text += "\nКатегории:\n"
+        for cat in result["category_focus"]:
+            text += f"  - {cat}\n"
+        text += "\nСледующие шаги:\n"
+        for i, step in enumerate(result["next_steps"], 1):
+            text += f"  {i}. {step}\n"
+        text += f"\nAPI: ~${result['api_cost']}"
+
+        if len(text) > 4000:
+            await callback.message.answer(text[:4000] + "\n...(обрезано)")
+        else:
+            await callback.message.answer(text)
+    except Exception as e:
+        await callback.message.answer(f"Ошибка: {e}")
 
 
 @router.callback_query(F.data.startswith("pitch_"))

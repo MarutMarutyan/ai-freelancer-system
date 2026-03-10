@@ -261,6 +261,85 @@ def execute(order_id: int):
 
 
 @app.command()
+def finance(days: int = typer.Option(30, "--days", "-d", help="За сколько дней показать")):
+    """Показать финансовую сводку."""
+    from src.utils.finance import get_finance_summary
+
+    summary = get_finance_summary(days=days)
+
+    table = Table(title=f"Финансы за {days} дней")
+    table.add_column("Показатель", style="cyan")
+    table.add_column("Значение", style="green")
+
+    table.add_row("Доход", f"{summary['total_income']} руб.")
+    table.add_row("Расходы API", f"${summary['total_api_cost']}")
+    table.add_row("Расходы API (руб.)", f"{summary['total_api_cost_rub']} руб.")
+    table.add_row("Комиссия Kwork", f"{summary['total_commission']} руб.")
+    table.add_row("Чистая прибыль", f"{summary['net_profit']} руб.")
+    table.add_row("---", "---")
+    table.add_row("API за все время", f"${summary['all_time_api_cost']}")
+    table.add_row("Доход за все время", f"{summary['all_time_income']} руб.")
+
+    console.print(table)
+
+
+@app.command()
+def strategy():
+    """Получить стратегические рекомендации от AI."""
+    from src.agents.strategy import strategy_agent
+    from src.config import settings as cfg
+
+    if not cfg.anthropic_api_key:
+        console.print("[red]ANTHROPIC_API_KEY не настроен![/red]")
+        return
+
+    console.print("[cyan]Анализирую статистику и готовлю рекомендации...[/cyan]")
+    result = asyncio.run(strategy_agent.run())
+
+    if not result:
+        console.print("[red]Не удалось получить рекомендации.[/red]")
+        return
+
+    # Профиль
+    console.print("\n[bold green]Профиль:[/bold green]")
+    for tip in result["profile_tips"]:
+        console.print(f"  - {safe_text(tip)}")
+
+    # Ценообразование
+    console.print("\n[bold yellow]Ценообразование:[/bold yellow]")
+    for tip in result["pricing_tips"]:
+        console.print(f"  - {safe_text(tip)}")
+
+    # Фокус на категориях
+    console.print("\n[bold cyan]Категории для фокуса:[/bold cyan]")
+    for cat in result["category_focus"]:
+        console.print(f"  - {safe_text(cat)}")
+
+    # Следующие шаги
+    console.print("\n[bold magenta]Следующие шаги:[/bold magenta]")
+    for i, step in enumerate(result["next_steps"], 1):
+        console.print(f"  {i}. {safe_text(step)}")
+
+    console.print(f"\n[dim]API стоимость: ~${result['api_cost']}[/dim]")
+
+
+@app.command()
+def income(
+    order_id: int = typer.Argument(help="ID заказа"),
+    amount: float = typer.Argument(help="Сумма в рублях"),
+):
+    """Записать доход от выполненного заказа."""
+    from src.utils.finance import record_income
+
+    record_income(amount, order_id)
+    commission = amount * 0.20
+    net = amount - commission
+    console.print(f"[green]Записан доход: {amount} руб.[/green]")
+    console.print(f"[yellow]Комиссия Kwork (20%): {commission} руб.[/yellow]")
+    console.print(f"[green]Чистый доход: {net} руб.[/green]")
+
+
+@app.command()
 def bot():
     """Запустить Telegram-бота."""
     if not settings.telegram_bot_token:
