@@ -9,6 +9,31 @@ from rich.table import Table
 from src.config import settings
 from src.database.db import init_db
 
+
+def safe_text(text: str) -> str:
+    """Заменить юникод-символы на ASCII для совместимости с cp1251."""
+    replacements = {
+        "\u2192": "->",  # →
+        "\u2190": "<-",  # ←
+        "\u2014": "--",  # —
+        "\u2013": "-",   # –
+        "\u2018": "'",   # '
+        "\u2019": "'",   # '
+        "\u201c": '"',   # "
+        "\u201d": '"',   # "
+        "\u2022": "-",   # •
+        "\u2026": "...", # …
+        "\u2713": "+",   # ✓
+        "\u2717": "x",   # ✗
+        "\u00ab": "<<",  # «
+        "\u00bb": ">>",  # »
+    }
+    for char, replacement in replacements.items():
+        text = text.replace(char, replacement)
+    # Убираем оставшиеся непечатаемые символы
+    return text.encode("cp1251", errors="replace").decode("cp1251")
+
+
 app = typer.Typer(
     name="freelancer",
     help="AI Freelancer System — заработок на фрилансе с помощью Claude",
@@ -143,7 +168,43 @@ def analyze(
 @app.command()
 def pitch(order_id: int):
     """Подготовить отклик на заказ."""
-    console.print(f"[yellow]Генератор откликов будет доступен в Этапе 4 (заказ #{order_id})[/yellow]")
+    from src.agents.response_writer import response_writer
+    from src.config import settings as cfg
+
+    if not cfg.anthropic_api_key:
+        console.print("[red]ANTHROPIC_API_KEY не настроен! Добавь ключ в .env файл[/red]")
+        return
+
+    console.print(f"[cyan]Генерирую отклик для заказа #{order_id}...[/cyan]")
+    result = asyncio.run(response_writer.run(order_id))
+
+    if not result:
+        console.print("[red]Не удалось сгенерировать отклик. Проверь что заказ существует и проанализирован.[/red]")
+        return
+
+    # Заголовок
+    console.print(f"\n[bold green]Отклик на заказ:[/bold green] {result['order_title']}")
+    console.print(f"[dim]Цена: {result['proposed_price']} руб. | Срок: {result['proposed_deadline']}[/dim]\n")
+
+    # Текст отклика
+    console.print("[bold cyan]--- ТЕКСТ ОТКЛИКА ---[/bold cyan]")
+    console.print(safe_text(result["pitch_text"]))
+    console.print("[bold cyan]--- КОНЕЦ ОТКЛИКА ---[/bold cyan]\n")
+
+    # Ключевые аргументы
+    if result["key_points"]:
+        console.print("[yellow]Ключевые аргументы:[/yellow]")
+        for point in result["key_points"]:
+            console.print(f"  - {safe_text(point)}")
+
+    # Мини-демо
+    if result.get("mini_demo"):
+        console.print(f"\n[yellow]Мини-демо:[/yellow]")
+        console.print(safe_text(result["mini_demo"]))
+
+    console.print(f"\n[dim]Отклик сохранён как черновик (ID={result['response_id']})[/dim]")
+    console.print("[dim]Скопируй текст и отправь на Kwork вручную[/dim]")
+    console.print(f"[dim]API стоимость: ~${response_writer.claude.estimated_cost_usd}[/dim]")
 
 
 @app.command()

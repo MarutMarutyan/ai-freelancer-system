@@ -31,6 +31,29 @@ class OrderAnalysis(BaseModel):
         return 0
 
 
+class PitchResponse(BaseModel):
+    """Сгенерированный отклик на заказ."""
+
+    pitch_text: str = Field(description="Текст отклика (100-200 слов)")
+    proposed_price: int = Field(description="Предложенная цена в рублях (одно число)")
+    proposed_deadline: str = Field(description="Предложенный срок выполнения")
+    key_points: list[str] = Field(description="3-5 ключевых аргументов отклика")
+    mini_demo: str = Field(
+        default="",
+        description="Мини-демо: первые 300 слов статьи, структура сайта, или пример перевода. Пусто если не применимо"
+    )
+
+    @field_validator("proposed_price", mode="before")
+    @classmethod
+    def parse_price(cls, v):
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str):
+            numbers = re.findall(r"\d+", v)
+            return int(numbers[0]) if numbers else 0
+        return 0
+
+
 class QAResult(BaseModel):
     """Результат проверки качества."""
 
