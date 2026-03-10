@@ -19,6 +19,7 @@ async def set_bot_commands(bot: Bot):
         BotCommand(command="scan", description="Сканировать заказы"),
         BotCommand(command="analyze", description="Анализировать новые"),
         BotCommand(command="orders", description="Лучшие заказы"),
+        BotCommand(command="execute", description="Выполнить заказ"),
         BotCommand(command="status", description="Статус системы"),
     ]
     await bot.set_my_commands(commands)

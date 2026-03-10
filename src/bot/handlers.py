@@ -232,6 +232,71 @@ async def cmd_pitch(message: Message):
         await message.answer(f"Ошибка: {e}")
 
 
+@router.message(Command("execute"))
+@admin_only
+async def cmd_execute(message: Message):
+    """Выполнить заказ."""
+    parts = message.text.split()
+    if len(parts) < 2:
+        await message.answer("Использование: /execute <id заказа>\nПример: /execute 8")
+        return
+
+    try:
+        order_id = int(parts[1])
+    except ValueError:
+        await message.answer("ID заказа должен быть числом.")
+        return
+
+    await message.answer(
+        f"Выполняю заказ #{order_id} (Executor + QA)...\n"
+        "Это может занять 1-3 минуты."
+    )
+
+    from src.agents.orchestrator import execute_with_qa
+
+    try:
+        result = await execute_with_qa(order_id)
+
+        if not result:
+            await message.answer("Не удалось выполнить заказ.")
+            return
+
+        qa_status = "QA ПРОЙДЕН" if result["qa_passed"] else "QA НЕ ПРОЙДЕН"
+        text = (
+            f"{qa_status} (итераций: {result['qa_iterations']})\n\n"
+        )
+
+        # Чек-лист
+        if result["qa_checklist"]:
+            text += "Чек-лист:\n"
+            for item in result["qa_checklist"]:
+                text += f"  {item}\n"
+            text += "\n"
+
+        if result["qa_comment"]:
+            text += f"QA: {result['qa_comment']}\n\n"
+
+        # Результат (обрезаем для Telegram)
+        work = result["result_text"]
+        if len(work) > 3000:
+            text += f"--- РЕЗУЛЬТАТ (первые 3000 из {len(work)}) ---\n"
+            text += work[:3000] + "\n...(обрезано)"
+        else:
+            text += f"--- РЕЗУЛЬТАТ ---\n{work}"
+
+        text += f"\n\nID={result['execution_id']} | API: ~${result['api_cost']}"
+
+        # Разбиваем на части если длинный
+        if len(text) > 4000:
+            await message.answer(text[:4000] + "\n...(обрезано)")
+        else:
+            await message.answer(text)
+
+    except Exception as e:
+        logger.error(f"Ошибка выполнения: {e}")
+        await message.answer(f"Ошибка: {e}")
+
+
 @router.message(Command("status"))
 @admin_only
 async def cmd_status(message: Message):

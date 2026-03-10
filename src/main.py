@@ -209,8 +209,55 @@ def pitch(order_id: int):
 
 @app.command()
 def execute(order_id: int):
-    """Выполнить заказ."""
-    console.print(f"[yellow]Исполнитель будет доступен в Этапе 6 (заказ #{order_id})[/yellow]")
+    """Выполнить заказ с проверкой качества."""
+    from src.agents.orchestrator import execute_with_qa
+    from src.config import settings as cfg
+
+    if not cfg.anthropic_api_key:
+        console.print("[red]ANTHROPIC_API_KEY не настроен![/red]")
+        return
+
+    console.print(f"[cyan]Выполняю заказ #{order_id} (Executor + QA)...[/cyan]")
+    console.print("[dim]Это может занять 1-3 минуты[/dim]\n")
+
+    result = asyncio.run(execute_with_qa(order_id))
+
+    if not result:
+        console.print("[red]Не удалось выполнить заказ.[/red]")
+        return
+
+    # QA статус
+    if result["qa_passed"]:
+        console.print(f"[bold green]QA ПРОЙДЕН[/bold green] (итераций: {result['qa_iterations']})")
+    else:
+        console.print(f"[bold red]QA НЕ ПРОЙДЕН[/bold red] (итераций: {result['qa_iterations']})")
+
+    # Чек-лист
+    if result["qa_checklist"]:
+        console.print("\n[yellow]Чек-лист QA:[/yellow]")
+        for item in result["qa_checklist"]:
+            console.print(f"  {safe_text(item)}")
+
+    if result["qa_issues"]:
+        console.print("\n[red]Проблемы:[/red]")
+        for issue in result["qa_issues"]:
+            console.print(f"  - {safe_text(issue)}")
+
+    if result["qa_comment"]:
+        console.print(f"\n[dim]QA: {safe_text(result['qa_comment'])}[/dim]")
+
+    # Результат работы
+    console.print(f"\n[bold cyan]--- РЕЗУЛЬТАТ РАБОТЫ ---[/bold cyan]")
+    text = result["result_text"]
+    if len(text) > 3000:
+        console.print(safe_text(text[:3000]))
+        console.print(f"\n[dim]...(обрезано, полный текст {len(text)} символов)[/dim]")
+    else:
+        console.print(safe_text(text))
+    console.print(f"[bold cyan]--- КОНЕЦ ---[/bold cyan]")
+
+    console.print(f"\n[dim]Сохранено (execution ID={result['execution_id']})[/dim]")
+    console.print(f"[dim]API стоимость: ~${result['api_cost']}[/dim]")
 
 
 @app.command()
