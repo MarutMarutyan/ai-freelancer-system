@@ -17,11 +17,11 @@ router = Router()
 
 def admin_only(func):
     """Декоратор: только админ может использовать бота."""
-    async def wrapper(message: Message, *args, **kwargs):
+    async def wrapper(message: Message, **kwargs):
         if settings.telegram_admin_id and message.from_user.id != settings.telegram_admin_id:
             await message.answer("Доступ запрещён.")
             return
-        return await func(message, *args, **kwargs)
+        return await func(message)
     wrapper.__name__ = func.__name__
     return wrapper
 
