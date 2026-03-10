@@ -332,7 +332,36 @@ async def cb_orders(callback: CallbackQuery):
         await callback.answer("Доступ запрещён", show_alert=True)
         return
     await callback.answer()
-    await cmd_orders(callback.message)
+
+    from src.database.db import get_session
+    from src.database.queries import get_analyzed_orders
+
+    session = get_session()
+    try:
+        orders = get_analyzed_orders(session, min_score=0)
+        if not orders:
+            await callback.message.answer("Нет проанализированных заказов.\nЗапусти /scan и /analyze.")
+            return
+
+        text = f"Заказы (всего {len(orders)}):\n\n"
+        for order in orders[:10]:
+            mark = ">>>" if order.score >= settings.min_score_threshold else "   "
+            budget = f"{order.budget_max}р." if order.budget_max else "?"
+            text += (
+                f"{mark} #{order.id} [{order.score}] {order.title[:40]}\n"
+                f"    {budget} | {order.responses_count} откл.\n\n"
+            )
+
+        buttons = []
+        for order in orders[:5]:
+            buttons.append([InlineKeyboardButton(
+                text=f"Отклик на #{order.id} ({order.score}б.)",
+                callback_data=f"pitch_{order.id}",
+            )])
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
+        await callback.message.answer(text, reply_markup=kb)
+    finally:
+        session.close()
 
 
 @router.callback_query(F.data == "status")
@@ -342,7 +371,32 @@ async def cb_status(callback: CallbackQuery):
         await callback.answer("Доступ запрещён", show_alert=True)
         return
     await callback.answer()
-    await cmd_status(callback.message)
+
+    from src.database.db import get_session
+    from src.database.models import Order
+    from sqlmodel import select, func
+
+    session = get_session()
+    try:
+        total = session.exec(select(func.count(Order.id))).one()
+        new = session.exec(select(func.count(Order.id)).where(Order.status == "new")).one()
+        analyzed = session.exec(select(func.count(Order.id)).where(Order.status == "analyzed")).one()
+        responded = session.exec(select(func.count(Order.id)).where(Order.status == "responded")).one()
+
+        text = (
+            "Статус системы:\n\n"
+            f"Заказов в БД: {total}\n"
+            f"  Новых: {new}\n"
+            f"  Проанализировано: {analyzed}\n"
+            f"  С откликом: {responded}\n\n"
+            f"Claude API: {'OK' if settings.anthropic_api_key else 'Нет ключа'}\n"
+            f"Модель анализа: {settings.analyzer_model}\n"
+            f"Модель генерации: {settings.writer_model}\n"
+            f"Порог оценки: {settings.min_score_threshold}\n"
+        )
+        await callback.message.answer(text, reply_markup=main_menu_kb())
+    finally:
+        session.close()
 
 
 @router.callback_query(F.data.startswith("pitch_"))
