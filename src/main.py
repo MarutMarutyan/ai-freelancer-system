@@ -216,7 +216,19 @@ def execute(order_id: int):
 @app.command()
 def bot():
     """Запустить Telegram-бота."""
-    console.print("[yellow]Telegram-бот будет доступен в Этапе 5[/yellow]")
+    if not settings.telegram_bot_token:
+        console.print("[red]TELEGRAM_BOT_TOKEN не настроен![/red]")
+        console.print("1. Открой @BotFather в Telegram")
+        console.print("2. Отправь /newbot и следуй инструкции")
+        console.print("3. Скопируй токен в .env файл: TELEGRAM_BOT_TOKEN=...")
+        console.print("4. Добавь свой Telegram ID: TELEGRAM_ADMIN_ID=...")
+        console.print("   (узнай ID через @userinfobot)")
+        return
+
+    from src.bot.bot import start_bot
+    console.print("[green]Запускаю Telegram-бота...[/green]")
+    console.print("[dim]Нажми Ctrl+C для остановки[/dim]")
+    asyncio.run(start_bot())
 
 
 if __name__ == "__main__":
