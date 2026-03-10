@@ -1,6 +1,8 @@
 """Pydantic-схемы для structured output от Claude API."""
 
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class OrderAnalysis(BaseModel):
@@ -13,9 +15,20 @@ class OrderAnalysis(BaseModel):
     reliability: int = Field(ge=0, le=25, description="Надёжность клиента (0-25)")
     recommendation: str = Field(description="respond (откликаться) или skip (пропустить)")
     reasoning: str = Field(description="Краткое обоснование оценки на русском")
-    suggested_price: int = Field(description="Рекомендуемая цена в рублях")
+    suggested_price: int = Field(description="Рекомендуемая цена в рублях (одно число)")
     estimated_time: str = Field(description="Примерное время выполнения")
     work_type: str = Field(description="Тип работы: text/code/translation/other")
+
+    @field_validator("suggested_price", mode="before")
+    @classmethod
+    def parse_price(cls, v):
+        """Извлечь число из строки вроде '8000-12000 руб.' -> 8000."""
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str):
+            numbers = re.findall(r"\d+", v)
+            return int(numbers[0]) if numbers else 0
+        return 0
 
 
 class QAResult(BaseModel):
