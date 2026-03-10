@@ -12,6 +12,9 @@ engine = create_engine(settings.database_url, echo=False)
 
 def init_db():
     """Создать все таблицы в базе данных."""
+    # Импортируем модели чтобы SQLModel знал о таблицах
+    from src.database import models  # noqa: F401
+
     SQLModel.metadata.create_all(engine)
 
 

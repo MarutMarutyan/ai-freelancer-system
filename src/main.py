@@ -1,5 +1,7 @@
 """CLI-интерфейс AI Freelancer System."""
 
+import asyncio
+
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -40,7 +42,37 @@ def status():
 @app.command()
 def scan():
     """Сканировать новые заказы на Kwork."""
-    console.print("[yellow]Сканер заказов будет доступен в Этапе 2[/yellow]")
+    from src.kwork.categories import ACTIVE_CATEGORIES, get_category_name
+    from src.kwork.parser import scan_new_projects
+
+    cats = ACTIVE_CATEGORIES
+    cat_names = [get_category_name(c) for c in cats]
+    console.print(f"[cyan]Сканирую категории:[/cyan] {', '.join(cat_names)}")
+
+    new_orders = asyncio.run(scan_new_projects(cats))
+
+    if not new_orders:
+        console.print("[yellow]Новых заказов не найдено[/yellow]")
+        return
+
+    table = Table(title=f"Найдено новых заказов: {len(new_orders)}")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Заказ", style="cyan", max_width=50)
+    table.add_column("Бюджет", style="green", width=15)
+    table.add_column("Категория", style="yellow", width=20)
+    table.add_column("Откликов", style="magenta", width=10)
+
+    for i, order in enumerate(new_orders, 1):
+        budget = f"до {order.budget_max} руб." if order.budget_max else "не указан"
+        table.add_row(
+            str(i),
+            order.title[:50],
+            budget,
+            order.category,
+            str(order.responses_count),
+        )
+
+    console.print(table)
 
 
 @app.command()
