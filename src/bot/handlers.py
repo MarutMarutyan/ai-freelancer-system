@@ -204,11 +204,15 @@ async def cmd_pitch(message: Message):
             return
 
         # Основной текст отклика
+        order_url = result.get('order_url', '')
         text = (
             f"Отклик на: {result['order_title'][:50]}\n"
-            f"Цена: {result['proposed_price']} руб.\n"
-            f"Срок: {result['proposed_deadline']}\n\n"
-            f"--- ТЕКСТ ---\n"
+            f"Цена: {result['proposed_price']} руб. | Срок: {result['proposed_deadline']}\n"
+        )
+        if order_url:
+            text += f"Открыть заказ: {order_url}\n"
+        text += (
+            f"\n--- ТЕКСТ ---\n"
             f"{result['pitch_text']}\n"
             f"--- КОНЕЦ ---\n\n"
         )
@@ -663,10 +667,15 @@ async def cb_pitch(callback: CallbackQuery):
         if not result:
             await callback.message.answer("Не удалось. Проверь что заказ проанализирован.")
             return
+        order_url = result.get('order_url', '')
         text = (
             f"Отклик на: {result['order_title'][:50]}\n"
-            f"Цена: {result['proposed_price']} р. | Срок: {result['proposed_deadline']}\n\n"
-            f"{result['pitch_text']}\n\n"
+            f"Цена: {result['proposed_price']} р. | Срок: {result['proposed_deadline']}\n"
+        )
+        if order_url:
+            text += f"Открыть заказ: {order_url}\n"
+        text += (
+            f"\n{result['pitch_text']}\n\n"
             f"ID={result['response_id']}"
         )
         if len(text) > 4000:

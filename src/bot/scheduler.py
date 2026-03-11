@@ -49,11 +49,15 @@ async def auto_scan_and_analyze(bot: Bot):
         buttons = []
 
         for r in sorted(good, key=lambda x: x["score"], reverse=True):
+            order_url = r.get('url', '')
             text += (
                 f"#{r['order_id']} [{r['score']}] {r['title'][:45]}\n"
                 f"  {r['work_type']} | {r['suggested_price']}р.\n"
-                f"  {r['reasoning'][:80]}\n\n"
+                f"  {r['reasoning'][:80]}\n"
             )
+            if order_url:
+                text += f"  Открыть: {order_url}\n"
+            text += "\n"
             buttons.append([InlineKeyboardButton(
                 text=f"Отклик на #{r['order_id']} ({r['score']}б.)",
                 callback_data=f"pitch_{r['order_id']}",

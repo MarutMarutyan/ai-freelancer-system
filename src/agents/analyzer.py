@@ -105,6 +105,7 @@ class AnalyzerAgent(BaseAgent):
                 results.append({
                     "order_id": order.id,
                     "title": order.title,
+                    "url": order.url,
                     "score": analysis.score,
                     "recommendation": analysis.recommendation,
                     "reasoning": analysis.reasoning,

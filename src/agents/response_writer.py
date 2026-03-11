@@ -130,6 +130,7 @@ class ResponseWriterAgent(BaseAgent):
             return {
                 "order_id": order.id,
                 "order_title": order.title,
+                "order_url": order.url,
                 "pitch_text": pitch.pitch_text,
                 "proposed_price": pitch.proposed_price,
                 "proposed_deadline": pitch.proposed_deadline,
