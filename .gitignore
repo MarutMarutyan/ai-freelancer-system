@@ -27,3 +27,14 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Screenshots and images in scripts
+scripts/*.png
+scripts/*.jpg
+templates/covers/*.png
+templates/portfolio/*.png
+
+# Claude Code local settings (personal, not for sharing)
+.claude/settings.local.json
+.claude/settings.json
+.claude/handoff.md
