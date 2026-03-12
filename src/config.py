@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -12,7 +13,7 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 
 class Settings(BaseSettings):
     # Claude API
-    anthropic_api_key: str = ""
+    anthropic_api_key: str = Field(default="", alias="APP_ANTHROPIC_KEY")
 
     # Telegram Bot
     telegram_bot_token: str = ""
@@ -37,6 +38,7 @@ class Settings(BaseSettings):
         "env_file": str(BASE_DIR / ".env"),
         "env_file_encoding": "utf-8",
         "extra": "ignore",
+        "populate_by_name": True,
     }
 
 
