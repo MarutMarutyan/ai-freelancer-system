@@ -99,6 +99,12 @@ class ClaudeClient:
             logger.error(f"Claude API structured error: {e}")
             raise
 
+
+    def reset_counters(self):
+        """Сбросить счётчики токенов."""
+        self._total_input_tokens = 0
+        self._total_output_tokens = 0
+
     @property
     def total_tokens(self) -> dict:
         """Общее количество использованных токенов."""
@@ -110,8 +116,9 @@ class ClaudeClient:
     @property
     def estimated_cost_usd(self) -> float:
         """Примерная стоимость в USD (на основе цен Sonnet)."""
-        input_cost = self._total_input_tokens / 1_000_000 * 3.0
-        output_cost = self._total_output_tokens / 1_000_000 * 15.0
+        # Haiku 4.5 pricing
+        input_cost = self._total_input_tokens / 1_000_000 * 0.8
+        output_cost = self._total_output_tokens / 1_000_000 * 4.0
         return round(input_cost + output_cost, 4)
 
 

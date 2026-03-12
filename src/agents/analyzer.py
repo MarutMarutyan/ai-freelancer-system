@@ -87,6 +87,7 @@ class AnalyzerAgent(BaseAgent):
                 return []
 
             logger.info(f"Начинаю анализ {len(orders)} заказов...")
+            self.claude.reset_counters()
             results = []
 
             for order in orders:
