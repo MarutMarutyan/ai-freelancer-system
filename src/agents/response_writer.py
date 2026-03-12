@@ -32,19 +32,24 @@ class ResponseWriterAgent(BaseAgent):
 - Время выполнения: {analysis.get('estimated_time', 'не указано')}
 - Обоснование: {analysis.get('reasoning', '')}"""
 
-        return f"""Напиши отклик на этот заказ с Kwork:
+        competition = "мало конкурентов" if (order.responses_count or 0) <= 3 else f"{order.responses_count} откликов"
 
+        return f"""Напиши выигрышный отклик на заказ с Kwork.
+
+=== ЗАКАЗ ===
 Заголовок: {order.title}
 Категория: {order.category}
 Бюджет: {budget_info}
-Срок: {order.deadline or "не указан"} дней
-Количество откликов: {order.responses_count}
+Срок клиента: {order.deadline or "не указан"} дней
+Конкуренция: {competition}
+
+Описание:
+{order.description}
 {analysis_info}
 
-Описание заказа:
-{order.description}
-
-Помни: профиль НОВЫЙ, нет отзывов. Компенсируй конкретикой и мини-демо."""
+=== ЗАДАЧА ===
+Профиль новый, отзывов нет. Напиши отклик по структуре из системного промпта.
+Главное — убери страх заказчика перед новичком: покажи что ты точно понял задачу и предложи гарантию результата."""
 
     async def generate_pitch(self, order: Order) -> PitchResponse | None:
         """Сгенерировать отклик на заказ."""
