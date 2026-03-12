@@ -53,7 +53,7 @@ async def auto_scan_and_analyze(bot: Bot):
             text += (
                 f"#{r['order_id']} [{r['score']}] {r['title'][:45]}\n"
                 f"  {r['work_type']} | {r['suggested_price']}р.\n"
-                f"  {r['reasoning'][:80]}\n"
+                f"  {r['reasoning']}\n"
             )
             if order_url:
                 text += f"  Открыть: {order_url}\n"
