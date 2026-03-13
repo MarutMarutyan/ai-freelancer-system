@@ -351,10 +351,10 @@ def bot():
         console.print("   (узнай ID через @userinfobot)")
         return
 
-    from src.bot.bot import start_bot
-    console.print("[green]Запускаю Telegram-бота...[/green]")
+    from src.bot.bot import start_all
+    console.print("[green]Запускаю Telegram-бота + API (port 8000)...[/green]")
     console.print("[dim]Нажми Ctrl+C для остановки[/dim]")
-    asyncio.run(start_bot())
+    asyncio.run(start_all())
 
 
 if __name__ == "__main__":

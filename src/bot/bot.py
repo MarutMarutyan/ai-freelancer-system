@@ -82,3 +82,20 @@ async def start_bot():
     finally:
         scheduler_task.cancel()
         await bot.session.close()
+
+
+async def start_api():
+    """Запустить FastAPI сервер."""
+    import uvicorn
+    from src.api import app as fastapi_app
+    config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=8000, log_level="warning")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+async def start_all():
+    """Запустить бота и API одновременно."""
+    await asyncio.gather(
+        start_bot(),
+        start_api(),
+    )
