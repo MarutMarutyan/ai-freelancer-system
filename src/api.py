@@ -1,12 +1,33 @@
-"""HTTP API для интеграции с n8n."""
+"""HTTP API + запуск Telegram-бота через FastAPI lifespan."""
+
+import asyncio
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from sqlmodel import Session, select
 
-from src.database.db import engine
+from src.database.db import engine, init_db
 from src.database.models import Order, Response
 
-app = FastAPI(title="AI Freelancer API", docs_url=None, redoc_url=None)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Запустить Telegram-бота при старте FastAPI."""
+    init_db()
+    bot_task = None
+    try:
+        from src.config import settings
+        if settings.telegram_bot_token:
+            from src.bot.bot import start_bot
+            bot_task = asyncio.create_task(start_bot())
+    except Exception as e:
+        print(f"Bot start error: {e}")
+    yield
+    if bot_task:
+        bot_task.cancel()
+
+
+app = FastAPI(title="AI Freelancer API", docs_url=None, redoc_url=None, lifespan=lifespan)
 
 
 @app.get("/health")
