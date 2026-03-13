@@ -85,3 +85,42 @@ def find_response(q: str = ""):
             "proposed_price": best_response.proposed_price,
             "proposed_deadline": best_response.proposed_deadline,
         }
+
+
+@app.get("/api/order")
+def find_order(q: str = ""):
+    """Найти полное ТЗ заказа по ключевым словам."""
+    if not q.strip():
+        return {"found": False}
+
+    words = [w.strip() for w in q.lower().split() if len(w.strip()) > 3]
+
+    with Session(engine) as session:
+        orders = session.exec(
+            select(Order).order_by(Order.created_at.desc())
+        ).all()
+
+        if not orders:
+            return {"found": False}
+
+        best_score = 0
+        best_order = None
+
+        for order in orders:
+            title_lower = order.title.lower()
+            score = sum(1 for w in words if w in title_lower)
+            if score > best_score:
+                best_score = score
+                best_order = order
+
+        if not best_order:
+            best_order = orders[0]
+
+        return {
+            "found": True,
+            "id": best_order.id,
+            "title": best_order.title,
+            "description": best_order.description,
+            "budget_max": best_order.budget_max,
+            "url": best_order.url,
+        }
