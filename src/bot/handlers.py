@@ -244,21 +244,8 @@ async def cmd_pitch(message: Message):
         await message.answer(f"Ошибка: {e}")
 
 
-@router.message(Command("execute"))
-@admin_only
-async def cmd_execute(message: Message):
-    """Выполнить заказ."""
-    parts = message.text.split()
-    if len(parts) < 2:
-        await message.answer("Использование: /execute <id заказа>\nПример: /execute 8")
-        return
-
-    try:
-        order_id = int(parts[1])
-    except ValueError:
-        await message.answer("ID заказа должен быть числом.")
-        return
-
+async def do_execute(message, order_id: int):
+    """Выполнить конкретный заказ."""
     await message.answer(
         f"Выполняю заказ #{order_id} (Executor + QA)...\n"
         "Это может занять 1-3 минуты."
@@ -274,21 +261,17 @@ async def cmd_execute(message: Message):
             return
 
         qa_status = "QA ПРОЙДЕН" if result["qa_passed"] else "QA НЕ ПРОЙДЕН"
-        text = (
-            f"{qa_status} (итераций: {result['qa_iterations']})\n\n"
-        )
+        text = (f"{qa_status} (итераций: {result['qa_iterations']})\n\n")
 
-        # Чек-лист
-        if result["qa_checklist"]:
+        if result.get("qa_checklist"):
             text += "Чек-лист:\n"
             for item in result["qa_checklist"]:
                 text += f"  {item}\n"
             text += "\n"
 
-        if result["qa_comment"]:
+        if result.get("qa_comment"):
             text += f"QA: {result['qa_comment']}\n\n"
 
-        # Результат (обрезаем для Telegram)
         work = result["result_text"]
         if len(work) > 3000:
             text += f"--- РЕЗУЛЬТАТ (первые 3000 из {len(work)}) ---\n"
@@ -298,7 +281,6 @@ async def cmd_execute(message: Message):
 
         text += f"\n\nID={result['execution_id']} | API: ~${result['api_cost']}"
 
-        # Разбиваем на части если длинный
         if len(text) > 4000:
             await message.answer(text[:4000] + "\n...(обрезано)")
         else:
@@ -307,6 +289,69 @@ async def cmd_execute(message: Message):
     except Exception as e:
         logger.error(f"Ошибка выполнения: {e}")
         await message.answer(f"Ошибка: {e}")
+
+
+@router.message(Command("execute"))
+@admin_only
+async def cmd_execute(message: Message):
+    """Выполнить заказ — без ID показывает список откликов."""
+    parts = message.text.split()
+
+    if len(parts) >= 2:
+        try:
+            order_id = int(parts[1])
+        except ValueError:
+            await message.answer("ID заказа должен быть числом.")
+            return
+        await do_execute(message, order_id)
+        return
+
+    # Без ID — показываем список заказов с откликами
+    from src.database.db import get_session
+    from src.database.models import Order, Response
+    from sqlmodel import select
+
+    session = get_session()
+    try:
+        rows = session.exec(
+            select(Order, Response)
+            .join(Response, Order.id == Response.order_id)
+            .order_by(Response.created_at.desc())
+        ).all()
+
+        if not rows:
+            await message.answer(
+                "Нет заказов с откликами.\n"
+                "Сначала сгенерируй отклик через /orders → кнопка 'Отклик на #ID'."
+            )
+            return
+
+        text = "Выбери заказ для выполнения:\n\n"
+        buttons = []
+        for order, response in rows[:8]:
+            price = f"{response.proposed_price}р." if response.proposed_price else "?"
+            deadline = response.proposed_deadline or "?"
+            text += f"#{order.id} — {order.title[:45]}\n    {price} | {deadline}\n\n"
+            buttons.append([InlineKeyboardButton(
+                text=f"▶ #{order.id} — {order.title[:35]}",
+                callback_data=f"execute_{order.id}",
+            )])
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+        await message.answer(text, reply_markup=kb)
+
+    finally:
+        session.close()
+
+
+@router.callback_query(F.data.startswith("execute_"))
+async def cb_execute(callback: CallbackQuery):
+    """Callback для кнопки выполнения заказа."""
+    order_id = int(callback.data.split("_")[1])
+    await callback.answer()
+    await do_execute(callback.message, order_id)
+
+
 
 
 @router.message(Command("finance"))
