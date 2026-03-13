@@ -86,9 +86,11 @@ async def start_bot():
 
 async def start_api():
     """Запустить FastAPI сервер."""
+    import os
     import uvicorn
     from src.api import app as fastapi_app
-    config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=8000, log_level="warning")
+    port = int(os.environ.get("PORT", 8000))
+    config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=port, log_level="warning")
     server = uvicorn.Server(config)
     await server.serve()
 
