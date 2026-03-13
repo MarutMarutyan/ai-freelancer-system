@@ -719,10 +719,7 @@ async def cb_pitch(callback: CallbackQuery):
         )
         if order_url:
             text += f"Открыть заказ: {order_url}\n"
-        text += (
-            f"\n{result['pitch_text']}\n\n"
-            f"ID={result['response_id']}"
-        )
+        text += f"\n{result['pitch_text']}"
         if len(text) > 4000:
             text = text[:4000] + "\n...(обрезано)"
         await callback.message.answer(text)

@@ -74,6 +74,19 @@ class ResponseWriterAgent(BaseAgent):
             )
 
             pitch = PitchResponse(**result)
+
+            # Пересчитываем дату дедлайна на основе сегодняшней даты
+            import re
+            from datetime import datetime, timedelta
+            match = re.search(r'(\d+)', pitch.proposed_deadline or '')
+            if match:
+                days = int(match.group(1))
+                deadline_date = datetime.now() + timedelta(days=days)
+                months = ['января','февраля','марта','апреля','мая','июня',
+                          'июля','августа','сентября','октября','ноября','декабря']
+                date_str = f"{deadline_date.day} {months[deadline_date.month-1]}"
+                pitch.proposed_deadline = f"{days} дней ({date_str})"
+
             logger.info(
                 f"Отклик для заказа #{order.id} сгенерирован "
                 f"(цена={pitch.proposed_price}, срок={pitch.proposed_deadline})"
