@@ -40,7 +40,7 @@ def get_category_name(category_id: str) -> str:
 
 
 # Текущая фаза (начинаем с 1 — тексты)
-CURRENT_PHASE = 3
+CURRENT_PHASE = 1
 
 # Активные категории для сканирования
 ACTIVE_CATEGORIES = get_categories_for_phase(CURRENT_PHASE)
