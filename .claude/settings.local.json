@@ -5,7 +5,18 @@
       "Bash(python -m src.main --help)",
       "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
       "Bash(python -m pip install -e .)",
-      "Bash(python -m src.main status)"
+      "Bash(python -m src.main status)",
+      "WebFetch(domain:kwork.ru)",
+      "Bash(python -m src.main scan)",
+      "Bash(python -c \"from src.database.db import init_db; init_db\\(\\); print\\(''DB initialized''\\)\")",
+      "Bash(python -c \"from src.config import settings; print\\(''API key set:'', bool\\(settings.anthropic_api_key\\)\\); print\\(''Key prefix:'', settings.anthropic_api_key[:10] if settings.anthropic_api_key else ''EMPTY''\\)\")",
+      "Bash(python -c \"from src.config import settings; print\\(''API key set:'', bool\\(settings.anthropic_api_key\\)\\); print\\(''Key prefix:'', settings.anthropic_api_key[:15] + ''...'' if settings.anthropic_api_key else ''EMPTY''\\)\")",
+      "Bash(python -m src.main analyze --limit 3)",
+      "Bash(python -m src.main analyze)",
+      "Bash(python -m src.main pitch 8)",
+      "Bash(python -m src.main pitch 13)",
+      "Bash(python -c \"from src.bot.handlers import router; print\\(''Bot handlers OK''\\)\")",
+      "Bash(python -m src.main bot)"
     ]
   }
 }
